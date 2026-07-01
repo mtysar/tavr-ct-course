@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0e7490" />
+<title>Reading a TAVR CT — Level 2 (Deeper)</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --card:#ffffff; --ink:#12212b; --muted:#5b6b76;
+    --accent:#0e7490; --accent2:#0891b2; --line:#e3e9ee;
+    --good:#127a45; --good-bg:#e6f6ec; --bad:#b42318; --bad-bg:#fdecea;
+    --tip:#7a4d00; --tip-bg:#fff6e4; --tip-line:#f0d9a8;
+    --flag:#8a1f1f; --flag-bg:#fdecec; --flag-line:#f4bcbc;
+    --shadow:0 6px 24px rgba(16,40,60,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0c1418; --card:#131e25; --ink:#e8eef2; --muted:#9fb1bc;
+      --accent:#22b8cf; --accent2:#38bdf8; --line:#22323c;
+      --good:#4ade80; --good-bg:#0f2a1c; --bad:#f87171; --bad-bg:#2a1414;
+      --tip:#f2c66b; --tip-bg:#2a2213; --tip-line:#4a3c1c;
+      --flag:#fca5a5; --flag-bg:#2a1414; --flag-line:#4a1e1e;
+      --shadow:0 6px 24px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+    line-height:1.55; font-size:17px;
+    padding:0 0 env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:0 16px}
+  header.topbar{
+    position:sticky;top:0;z-index:20;background:var(--bg);
+    padding-top:env(safe-area-inset-top);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{display:flex;align-items:center;gap:10px;padding:12px 16px;max-width:680px;margin:0 auto}
+  .brand{font-weight:700;font-size:15px;letter-spacing:.2px;flex:1;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .homebtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:6px 10px;font-size:13px;cursor:pointer}
+  .homebtn:active{transform:scale(.97)}
+  .progress-track{height:5px;background:var(--line);width:100%}
+  .progress-fill{height:5px;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:width .3s ease}
+
+  main{padding:20px 0 40px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:22px 20px;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .eyebrow{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);margin:0 0 6px}
+  h1.title{font-size:23px;line-height:1.25;margin:0 0 4px}
+  .lead-emoji{font-size:30px;line-height:1;margin-bottom:10px}
+  .body p{margin:0 0 12px}
+  .body ul{margin:0 0 12px;padding-left:20px}
+  .body li{margin:0 0 7px}
+  .body b,.body strong{color:var(--ink)}
+  .body code{background:var(--line);padding:2px 6px;border-radius:6px;font-size:14.5px}
+  .k{color:var(--accent);font-weight:700}
+
+  .callout{border-radius:13px;padding:13px 15px;margin:14px 0;font-size:15.5px;border:1px solid}
+  .callout .h{font-weight:700;display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:14px;text-transform:uppercase;letter-spacing:.04em}
+  .tip{background:var(--tip-bg);border-color:var(--tip-line);color:var(--tip)}
+  .tip .body-txt,.flag .body-txt{color:var(--ink)}
+  .flag{background:var(--flag-bg);border-color:var(--flag-line);color:var(--flag)}
+
+  .quiz{margin-top:18px;border-top:1px dashed var(--line);padding-top:16px}
+  .quiz .q{font-weight:650;margin:0 0 12px;display:flex;gap:8px}
+  .quiz .q .qn{color:var(--accent);font-weight:800}
+  .opt{
+    display:block;width:100%;text-align:left;background:var(--card);
+    border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;margin:0 0 9px;
+    font-size:16px;color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s;
+  }
+  .opt:active{transform:scale(.995)}
+  .opt.correct{border-color:var(--good);background:var(--good-bg)}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+  .opt.locked{cursor:default;opacity:.85}
+  .opt .mark{float:right;font-weight:800}
+  .explain{font-size:15px;background:var(--good-bg);border:1px solid var(--good);border-radius:11px;padding:11px 13px;margin-top:4px;display:none}
+  .explain.show{display:block}
+  .explain.miss{background:var(--bad-bg);border-color:var(--bad)}
+  .explain .lab{font-weight:700}
+
+  .nav{display:flex;gap:12px;margin-top:8px}
+  .btn{flex:1;border:none;border-radius:13px;padding:15px 16px;font-size:16px;font-weight:700;cursor:pointer;transition:transform .1s,opacity .15s}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* home */
+  .hero{text-align:center;padding:14px 4px 6px}
+  .hero .big{font-size:40px}
+  .hero h1{font-size:26px;margin:8px 0 4px}
+  .hero p{color:var(--muted);margin:0 0 4px}
+  .lesson-list{list-style:none;margin:6px 0 0;padding:0}
+  .lesson-item{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:13px;margin-bottom:9px;cursor:pointer;background:var(--card)}
+  .lesson-item:active{transform:scale(.996)}
+  .lesson-item .num{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--line);font-weight:700;font-size:14px;color:var(--muted)}
+  .lesson-item.done .num{background:var(--good);color:#fff}
+  .lesson-item .lt{flex:1}
+  .lesson-item .lt .tt{font-weight:650;font-size:15.5px}
+  .lesson-item .lt .st{font-size:13px;color:var(--muted)}
+  .lesson-item .chev{color:var(--muted)}
+  .meta{color:var(--muted);font-size:13.5px;text-align:center;margin-top:14px}
+  .reset{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:13px;cursor:pointer}
+
+  .scorebox{text-align:center}
+  .scorebox .pct{font-size:52px;font-weight:800;color:var(--accent);line-height:1}
+  .disclaimer{font-size:12.5px;color:var(--muted);text-align:center;margin:22px 0 8px;padding:0 6px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span> TAVR CT · Level 2</div>
+    <button class="homebtn" id="homeBtn">☰ Menu</button>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+</header>
+
+<main><div class="wrap" id="app"></div></main>
+
+<script>
+/* ============================================================
+   CONTENT  — one concept per page. Sources: SCCT Expert Consensus
+   (Blanke 2019, JACC Imaging), plus verified 3mensio workflow research.
+   Educational only — always confirm against the raw CT and your
+   local 3mensio version + heart team.
+   ============================================================ */
+const LESSONS = [
+{
+  emoji:"🎛️", eyebrow:"Deeper · Lesson 1",
+  title:"Garbage in, garbage out: the scan itself",
+  body:`
+    <p>Every measurement inherits the quality of the acquisition. Four levers decide whether your numbers are trustworthy:</p>
+    <ul>
+      <li><b>Gating:</b> retrospective (full R–R) gives a systolic phase <i>and</i> dynamic multiphase data — at higher dose; a prospective systolic window saves dose but loses the dynamics.</li>
+      <li><b>Opacification:</b> aim for a crisp, uniform annulus lumen (roughly <b>≥250–300 HU</b>); weak contrast blurs the border and corrupts area/perimeter.</li>
+      <li><b>Motion:</b> temporal resolution and rate control keep the cusps sharp — motion fattens the contour.</li>
+      <li><b>Thin slices</b> (≤~1 mm, sharp kernel) and one bolus covering root → iliofemoral runoff.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ At the workstation</div><div class="body-txt">Fuzzy annulus border? <b>Adjust window/level and recheck HU before trusting the number.</b> Motion or low opacification means re-acquire, not fudge. In CKD, a reduced- or non-contrast plan changes how you get calcium and access data.</div></div>
+  `,
+  quizzes:[{
+    q:"Which acquisition choice gives both a systolic phase and dynamic multiphase data?",
+    options:["Prospective systolic-only gating","Retrospective full R–R gating","A non-contrast scan","Thicker slices"],
+    answer:1,
+    explain:"Retrospective full R–R gating reconstructs every phase — so you can pick systole and inspect annular dynamics — at the cost of higher dose."
+  },{
+    q:"Weak contrast opacification of the annulus mainly causes…",
+    options:["Higher radiation dose","A blurred lumen border and unreliable area/perimeter","Faster scanning","More calcium"],
+    answer:1,
+    explain:"If the blood–lumen border is not crisp (about ≥250–300 HU), the contour is guesswork and sizing becomes unreliable."
+  }]
+},
+{
+  emoji:"👑", eyebrow:"Deeper · Lesson 2",
+  title:"The root is a crown — and it moves",
+  body:`
+    <p>The ring we size is a convenient fiction. The real support is a <b>3-D crown</b>: the semilunar cusps insert along a curved coronet, with the <b>virtual basal ring (VBR)</b> — our measured plane — sitting at the nadirs, and the true anatomic junction slightly above.</p>
+    <ul>
+      <li><b>It is dynamic:</b> the whole root expands and rounds in systole, narrows and turns elliptical in diastole — a single frame is only a snapshot.</li>
+      <li><b>Bicuspid caveat:</b> a fused cusp plus raphe distorts the nadirs, so the annular plane is ambiguous; you may add a <b>supra-annular</b> read (inter-commissural diameter) and weigh raphe calcium — higher leak and rupture risk, different device behaviour.</li>
+    </ul>
+  `,
+  quizzes:[{
+    q:"Why is annular sizing harder in a bicuspid valve?",
+    options:["The annulus is always too small","Cusp fusion and a raphe distort the nadirs, so the basal plane is ambiguous","Bicuspid valves have no calcium","Contrast is not needed"],
+    answer:1,
+    explain:"Fusion and the raphe warp the hinge points; many operators add a supra-annular / inter-commissural read and factor in raphe calcium."
+  },{
+    q:"The virtual basal ring is best described as…",
+    options:["A true anatomic fibrous ring","A constructed plane at the cusp nadirs","The sinotubular junction","The LVOT"],
+    answer:1,
+    explain:"It is a mathematical plane at the three nadirs — the anatomic support is actually a 3-D crown of cusp insertions."
+  }]
+},
+{
+  emoji:"🎯", eyebrow:"Deeper · Lesson 3",
+  title:"Why millimetres change the valve size",
+  body:`
+    <p>Annulus values cluster right at the <b>size-transition boundaries</b> of each device — so a small error does not blur the answer, it <b>flips</b> it to the next size.</p>
+    <ul>
+      <li>Variance creeps in from <b>nadir placement, plane tilt, phase, contour tool, and observer</b>. A ~1 mm nadir slip can move the area enough to change size.</li>
+      <li><b>Automated vs semi-automated:</b> auto is fast and consistent but disagrees with careful manual work at the margins — verify every borderline case.</li>
+      <li><b>QA habit:</b> for a borderline annulus, re-measure on an <b>adjacent phase</b> or with a <b>second reader</b>, and always document which phase you used.</li>
+    </ul>
+  `,
+  quizzes:[{
+    q:"Why do small sizing errors matter more in TAVR than in most imaging?",
+    options:["CT is low resolution","Annulus values sit near device size-transition thresholds, so a tiny error flips the size","The annulus is very large","Errors cancel out"],
+    answer:1,
+    explain:"Because the measured value often lands close to a size cut-off, sub-millimetre error can push you to the wrong device size."
+  }]
+},
+{
+  emoji:"📊", eyebrow:"Deeper · Lesson 4",
+  title:"Oversizing, cover index and the gray zone",
+  body:`
+    <p>Valves are deliberately <b>oversized</b>: balloon-expandable by a modest amount on <b>area</b>, self-expanding by more on <b>perimeter</b>. Too little → paravalvular leak; too much → rupture (balloon-expandable) or conduction trouble.</p>
+    <ul>
+      <li><b>Cover index</b> = (prosthesis diameter − annulus diameter) ÷ prosthesis × 100. Higher cover index → less leak.</li>
+      <li><b>Area–perimeter discordance:</b> in eccentric annuli the two can point to different sizes — heavy calcium nudges you toward the <b>smaller</b> size to avoid rupture.</li>
+      <li><b>Between two sizes?</b> Let calcium, LVOT shape, eccentricity and device type decide — a repositionable self-expanding valve is often friendlier in the gray zone.</li>
+    </ul>
+  `,
+  quizzes:[{
+    q:"Annulus falls between two balloon-expandable sizes with heavy LVOT calcium. Reasonable move?",
+    options:["Always pick the larger size","Lean smaller and/or consider a self-expanding valve to reduce rupture risk","Cancel the procedure","Ignore the calcium"],
+    answer:1,
+    explain:"Heavy LVOT calcium plus aggressive oversizing risks annular rupture, so downsizing or a repositionable self-expanding valve is safer."
+  },{
+    q:"A higher cover index is associated with…",
+    options:["More paravalvular leak","Less paravalvular leak","More calcium","Smaller sinuses"],
+    answer:1,
+    explain:"Cover index reflects oversizing relative to the annulus — more oversizing (higher index) generally means less paravalvular leak."
+  }]
+},
+{
+  emoji:"🩸", eyebrow:"Deeper · Lesson 5",
+  title:"Obstruction mechanics, VTC vs VTSTJ, BASILICA",
+  body:`
+    <p>Three numbers interact to cause obstruction: the <b>displaced leaflet length</b>, the <b>coronary height</b>, and the <b>sinus/STJ width</b>. Danger = a long leaflet that reaches the ostium in a sinus too tight to let blood past.</p>
+    <ul>
+      <li><b>VTC</b> (valve-to-coronary) <b>&lt;3 mm</b> = high risk; <b>VTSTJ</b> (valve-to-STJ) <b>&lt;2 mm</b> = sinus-sequestration risk.</li>
+      <li><b>Valve-in-valve is far riskier</b> than native — the old bioprosthetic leaflets are splayed outward into a fixed frame, so VTC/VTSTJ are central to ViV planning.</li>
+      <li><b>BASILICA</b> (intentional leaflet laceration) candidacy is judged on CT: which leaflet threatens which coronary, its calcification/length, and whether coronary re-access is feasible.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ In 3mensio</div><div class="body-txt">Drop the <b>virtual valve at the intended depth</b> and read <b>VTC and VTSTJ per coronary</b>. Flag ViV and low-VTC cases to the heart team early for BASILICA or protection planning.</div></div>
+  `,
+  quizzes:[{
+    q:"Coronary obstruction risk is highest when…",
+    options:["Coronary height is very high","Displaced leaflet length ≥ coronary height with a narrow sinus/STJ","The annulus is circular","Calcium is absent"],
+    answer:1,
+    explain:"A leaflet long enough to reach the ostium, in a sinus/STJ too small to accommodate it, curtains the coronary."
+  },{
+    q:"Compared with native TAVR, valve-in-valve coronary obstruction risk is…",
+    options:["Lower","About the same","Substantially higher","Zero"],
+    answer:2,
+    explain:"In ViV the existing bioprosthetic leaflets are pushed outward into a rigid frame, markedly raising obstruction risk."
+  }]
+},
+{
+  emoji:"🧮", eyebrow:"Deeper · Lesson 6",
+  title:"Calcium: quantify, locate, and conduction",
+  body:`
+    <p>Beyond spotting calcium, <b>quantify</b> and <b>place</b> it.</p>
+    <ul>
+      <li><b>Score it:</b> the aortic-valve calcium score settles discordant <b>low-flow, low-gradient</b> AS. ACC/AHA: severe AS is likely at roughly <b>≥2000 AU in men, ≥1300 AU in women</b>.</li>
+      <li><b>Location drives strategy:</b> LVOT/sub-annular calcium → rupture with balloon-expandable → favour self-expanding or downsize; asymmetric, sheet-like calcium → leak.</li>
+      <li><b>Conduction:</b> calcium in the LVOT beneath the <b>non- or right-coronary cusp</b> sits next to the membranous septum and conduction axis → higher heart-block / pacemaker risk.</li>
+    </ul>
+  `,
+  quizzes:[{
+    q:"By ACC/AHA CT calcium-score thresholds, severe AS is likely at approximately…",
+    options:["Men ≥2000 AU / women ≥1300 AU","Men ≥100 AU / women ≥50 AU","Any detectable calcium","Men ≥6000 AU / women ≥5000 AU"],
+    answer:0,
+    explain:"ACC/AHA 2020 gives about 2000 AU (men) and 1300 AU (women) as thresholds suggesting severe AS when echo is equivocal."
+  },{
+    q:"Calcium in the LVOT beneath the non-coronary cusp most raises the risk of…",
+    options:["Vascular access failure","Conduction disturbance / pacemaker (and annular rupture)","Stroke only","Contrast nephropathy"],
+    answer:1,
+    explain:"That location abuts the membranous septum and conduction system, so it predicts heart block; it also stiffens the annulus (rupture)."
+  }]
+},
+{
+  emoji:"⚡", eyebrow:"Deeper · Lesson 7",
+  title:"Implant depth, pacemakers and commissural alignment",
+  body:`
+    <p>The C-arm angle (Level 1) is only the aim — <b>depth</b> is the lever that decides pacemakers and future access.</p>
+    <ul>
+      <li><b>Go high, pace less:</b> a higher implant (cusp-overlap guided) keeps the frame off the conduction system → fewer pacemakers — but too high risks embolisation.</li>
+      <li><b>Membranous septum (MS) length</b> on CT predicts conduction risk: aiming implant depth <b>shallower than the MS length</b> lowers heart-block risk.</li>
+      <li><b>Commissural alignment:</b> CT can predict the native commissures so the device neo-commissures line up — protecting <b>future coronary access</b>.</li>
+    </ul>
+  `,
+  quizzes:[{
+    q:"Keeping implant depth shallower than the membranous septum length is meant to reduce…",
+    options:["Paravalvular leak","Conduction disturbance / need for a pacemaker","Vascular complications","Contrast dose"],
+    answer:1,
+    explain:"A deeper implant relative to a short membranous septum presses on the conduction axis — staying above it reduces heart block."
+  },{
+    q:"Commissural alignment planned on CT mainly improves…",
+    options:["Access-vessel size","Future coronary access after TAVR","Annulus area","Radiation dose"],
+    answer:1,
+    explain:"Aligning neo-commissures with native commissures keeps coronary ostia clear of the valve posts, easing later coronary cannulation."
+  }]
+},
+{
+  emoji:"🛣️", eyebrow:"Deeper · Lesson 8",
+  title:"When the groin says no: alternative access",
+  body:`
+    <p>If iliofemoral fails the criteria, CT chooses the next route:</p>
+    <ul>
+      <li><b>Trans-axillary / subclavian</b> (usually left): measure vessel diameter, calcium, tortuosity — and <b>avoid a side with a patent LIMA graft</b>.</li>
+      <li><b>Transcaval:</b> find a <b>calcium-free crossing window</b> between IVC and abdominal aorta (below the renals, above the bifurcation) with nothing interposed.</li>
+      <li><b>Transcarotid:</b> confirm carotid patency, calibre, and collateral / circle-of-Willis adequacy.</li>
+      <li><b>Trans-apical / direct aortic:</b> more invasive, now a fallback.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ On CT</div><div class="body-txt">For transcaval, hunt the <b>aorto-caval calcium-free target</b>; for left axillary, <b>check for a LIMA graft</b>; match the device sheath profile to the conduit and spare contrast in CKD.</div></div>
+  `,
+  quizzes:[{
+    q:"For transcaval access, CT must identify…",
+    options:["A large femoral artery","A calcium-free aorto-caval crossing window below the renals","A patent LIMA","A small annulus"],
+    answer:1,
+    explain:"Transcaval crosses from IVC into the aorta — you need a calcium-free target segment (below the renal arteries) to cross and later close."
+  },{
+    q:"Left trans-axillary access is best avoided when CT shows…",
+    options:["A patent LIMA graft on that side","A circular annulus","High coronary ostia","Mild aortic tortuosity"],
+    answer:0,
+    explain:"Instrumenting a subclavian/axillary artery that gives off a patent LIMA risks the graft and myocardial ischaemia."
+  }]
+},
+{
+  emoji:"🗂️", eyebrow:"Deeper · Lesson 9",
+  title:"Special cases, valve-in-valve and post-TAVR CT",
+  body:`
+    <p>The final layer — where CT extends beyond first-time native TAVR:</p>
+    <ul>
+      <li><b>Low-flow, low-gradient AS:</b> the CT calcium score confirms severity when echo gradients are equivocal.</li>
+      <li><b>Valve-in-valve:</b> know the surgical valve <b>true internal diameter</b> (small valves → high residual gradient / pacemaker), plus the ViV obstruction risk from Lesson 5.</li>
+      <li><b>Post-TAVR CT:</b> 4-D CT detects <b>HALT</b> (hypoattenuated leaflet thickening / subclinical leaflet thrombosis) and frame under-expansion.</li>
+      <li><b>Close the loop:</b> structured report → heart-team device matrix; QA that phase, borderline re-measure, access plus backup route, and angle plus alignment are all documented.</li>
+    </ul>
+    <div class="callout flag"><div class="h">🚩 Level 2 red-flags</div><div class="body-txt">Bicuspid / raphe calcium · area–perimeter discordance · VTC &lt;3 or VTSTJ &lt;2 mm · LVOT-under-NCC calcium (pacemaker) · short membranous septum · hostile groin needing a backup route · ViV with small true ID.</div></div>
+  `,
+  quizzes:[{
+    q:"In discordant low-flow, low-gradient AS, the CT calcium score helps by…",
+    options:["Measuring access vessels","Confirming AS severity when echo gradients are equivocal","Predicting stroke","Sizing the sheath"],
+    answer:1,
+    explain:"When flow is low, gradients under-estimate severity — a high aortic-valve calcium score supports truly severe AS."
+  },{
+    q:"HALT on post-TAVR CT refers to…",
+    options:["A vascular complication","Hypoattenuated leaflet thickening (subclinical leaflet thrombosis)","A type of access","An annulus measurement"],
+    answer:1,
+    explain:"HALT = hypoattenuated leaflet thickening, the CT signature of subclinical leaflet thrombosis, seen on 4-D post-TAVR CT."
+  }]
+}
+];
+
+/* ============================================================
+   APP LOGIC
+   ============================================================ */
+const KEY = "tavrct_L2_progress_v1";
+const app = document.getElementById("app");
+const pfill = document.getElementById("pfill");
+const homeBtn = document.getElementById("homeBtn");
+
+let state = load();
+function load(){
+  try{ return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
+  catch(e){ return fresh(); }
+}
+function fresh(){ return { view:"home", idx:0, answers:{} }; } // answers: {"L-Q": chosenIndex}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+function lessonDone(i){
+  const L = LESSONS[i];
+  return L.quizzes.every((_,qi)=> state.answers[i+"-"+qi] !== undefined);
+}
+function totalAnswered(){
+  let a=0,t=0;
+  LESSONS.forEach((L,i)=> L.quizzes.forEach((q,qi)=>{ t++; if(state.answers[i+"-"+qi]!==undefined)a++; }));
+  return {a,t};
+}
+function totalCorrect(){
+  let c=0,t=0;
+  LESSONS.forEach((L,i)=> L.quizzes.forEach((q,qi)=>{ t++; const ch=state.answers[i+"-"+qi]; if(ch===q.answer)c++; }));
+  return {c,t};
+}
+function setProgressBar(){
+  const {a,t}=totalAnswered();
+  pfill.style.width = (t? (a/t*100):0) + "%";
+}
+
+function esc(s){return s;}
+
+function render(){
+  window.scrollTo(0,0);
+  if(state.view==="home") return renderHome();
+  if(state.view==="done") return renderDone();
+  return renderLesson(state.idx);
+}
+
+function renderHome(){
+  homeBtn.textContent = "☰ Menu";
+  const {a,t}=totalAnswered();
+  let items = LESSONS.map((L,i)=>`
+    <li class="lesson-item ${lessonDone(i)?'done':''}" data-go="${i}">
+      <div class="num">${lessonDone(i)?'✓':(i+1)}</div>
+      <div class="lt"><div class="tt">${L.title}</div><div class="st">${L.eyebrow}</div></div>
+      <div class="chev">›</div>
+    </li>`).join("");
+  app.innerHTML = `
+    <div class="card">
+      <div class="hero">
+        <div class="big">🫀</div>
+        <h1>TAVR CT — Level 2</h1>
+        <p>The deeper layer: acquisition, sizing math, obstruction mechanics, conduction &amp; alternative access. Assumes Level 1.</p>
+      </div>
+      <div class="nav" style="margin-top:16px">
+        <a class="btn ghost" href="index.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center">← Level 1</a>
+        <button class="btn primary" id="startBtn">${a>0? 'Continue' : 'Start'} →</button>
+      </div>
+      <div class="meta">${a} / ${t} quiz questions answered${a>0?` · <button class="reset" id="resetBtn">reset progress</button>`:''}</div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Lessons</div>
+      <ul class="lesson-list">${items}</ul>
+    </div>
+    <div class="disclaimer">Educational tool for training. Always confirm every measurement against the raw CT, your local 3mensio version, and the heart team. Not medical advice.</div>
+  `;
+  document.getElementById("startBtn").onclick=()=>{
+    let first = LESSONS.findIndex((_,i)=>!lessonDone(i));
+    goLesson(first<0?0:first);
+  };
+  const rb=document.getElementById("resetBtn");
+  if(rb) rb.onclick=()=>{ if(confirm("Clear all saved progress on this device?")){ state=fresh(); save(); render(); } };
+  app.querySelectorAll("[data-go]").forEach(el=> el.onclick=()=>goLesson(+el.dataset.go));
+  setProgressBar();
+}
+
+function goLesson(i){ state.view="lesson"; state.idx=i; save(); render(); }
+
+function renderLesson(i){
+  homeBtn.textContent="☰ Menu";
+  const L=LESSONS[i];
+  const quizHTML = L.quizzes.map((q,qi)=>{
+    const key=i+"-"+qi;
+    const chosen=state.answers[key];
+    const answered=chosen!==undefined;
+    const opts=q.options.map((o,oi)=>{
+      let cls="opt";
+      if(answered){
+        cls+=" locked";
+        if(oi===q.answer) cls+=" correct";
+        else if(oi===chosen) cls+=" wrong";
+      }
+      let mark = answered ? (oi===q.answer?'<span class="mark">✓</span>':(oi===chosen?'<span class="mark">✗</span>':'')) : '';
+      return `<button class="${cls}" data-q="${qi}" data-o="${oi}" ${answered?'disabled':''}>${o}${mark}</button>`;
+    }).join("");
+    const miss = answered && chosen!==q.answer;
+    const exp = `<div class="explain ${answered?'show':''} ${miss?'miss':''}" id="exp-${qi}"><span class="lab">${miss?'Not quite. ':'Correct. '}</span>${q.explain}</div>`;
+    return `<div class="quiz">
+      <div class="q"><span class="qn">Q${L.quizzes.length>1?(qi+1):''}</span><span>${q.q}</span></div>
+      ${opts}
+      ${exp}
+    </div>`;
+  }).join("");
+
+  const allAnswered = L.quizzes.every((_,qi)=> state.answers[i+"-"+qi]!==undefined);
+  const isLast = i===LESSONS.length-1;
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="lead-emoji">${L.emoji}</div>
+      <div class="eyebrow">${L.eyebrow} · ${i+1} of ${LESSONS.length}</div>
+      <h1 class="title">${L.title}</h1>
+      <div class="body">${L.body}</div>
+      ${quizHTML}
+    </div>
+    <div class="nav">
+      <button class="btn ghost" id="prevBtn">${i===0?'☰ Menu':'← Back'}</button>
+      <button class="btn primary" id="nextBtn" ${allAnswered?'':'disabled'}>
+        ${isLast? 'Finish ✓' : 'Next →'}
+      </button>
+    </div>
+    ${allAnswered?'':'<div class="meta">Answer above to unlock Next →</div>'}
+  `;
+
+  app.querySelectorAll(".opt[data-q]").forEach(btn=>{
+    btn.onclick=()=>{
+      const qi=+btn.dataset.q, oi=+btn.dataset.o;
+      const key=i+"-"+qi;
+      if(state.answers[key]!==undefined) return;
+      state.answers[key]=oi;
+      save();
+      renderLesson(i); // re-render to lock + reveal explanation
+    };
+  });
+  document.getElementById("prevBtn").onclick=()=>{
+    if(i===0){ state.view="home"; save(); render(); }
+    else goLesson(i-1);
+  };
+  const nb=document.getElementById("nextBtn");
+  nb.onclick=()=>{
+    if(nb.disabled) return;
+    if(isLast){ state.view="done"; save(); render(); }
+    else goLesson(i+1);
+  };
+  setProgressBar();
+}
+
+function renderDone(){
+  homeBtn.textContent="☰ Menu";
+  const {c,t}=totalCorrect();
+  const pct = t? Math.round(c/t*100):0;
+  app.innerHTML=`
+    <div class="card scorebox">
+      <div class="lead-emoji" style="text-align:center;font-size:40px">🎉</div>
+      <div class="eyebrow" style="text-align:center">Course complete</div>
+      <h1 class="title" style="text-align:center">You finished all ${LESSONS.length} lessons</h1>
+      <div class="pct">${pct}%</div>
+      <p class="meta" style="margin-top:2px">${c} / ${t} quiz questions correct</p>
+      <div class="callout flag" style="text-align:left"><div class="h">🚩 Carry these numbers to the workstation</div><div class="body-txt">Systole 30–40% for annulus · size SAPIEN off <b>area</b>, Evolut off <b>perimeter</b> · coronary height <b>&lt;12 mm</b> · SOV <b>&lt;30 mm</b> · VTC <b>&lt;3 mm</b> · access <b>MLD</b> is min not mean · <b>&gt;270°</b> calcium &amp; SFAR <b>≥1.05</b>.</div></div>
+      <div class="nav">
+        <button class="btn ghost" id="reviewBtn">Review lessons</button>
+        <button class="btn primary" id="restartBtn">Restart quiz</button>
+      </div>
+    </div>
+    <div class="disclaimer">Educational tool for training. Always confirm against the raw CT, your local 3mensio version, and the heart team.</div>
+  `;
+  document.getElementById("reviewBtn").onclick=()=>{ state.view="home"; save(); render(); };
+  document.getElementById("restartBtn").onclick=()=>{ state.answers={}; state.view="home"; state.idx=0; save(); render(); };
+  pfill.style.width="100%";
+}
+
+homeBtn.onclick=()=>{ state.view="home"; save(); render(); };
+render();
+</script>
+</body>
+</html>
