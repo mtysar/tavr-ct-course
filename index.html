@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0e7490" />
+<title>Reading a TAVR CT — Step by Step</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --card:#ffffff; --ink:#12212b; --muted:#5b6b76;
+    --accent:#0e7490; --accent2:#0891b2; --line:#e3e9ee;
+    --good:#127a45; --good-bg:#e6f6ec; --bad:#b42318; --bad-bg:#fdecea;
+    --tip:#7a4d00; --tip-bg:#fff6e4; --tip-line:#f0d9a8;
+    --flag:#8a1f1f; --flag-bg:#fdecec; --flag-line:#f4bcbc;
+    --shadow:0 6px 24px rgba(16,40,60,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0c1418; --card:#131e25; --ink:#e8eef2; --muted:#9fb1bc;
+      --accent:#22b8cf; --accent2:#38bdf8; --line:#22323c;
+      --good:#4ade80; --good-bg:#0f2a1c; --bad:#f87171; --bad-bg:#2a1414;
+      --tip:#f2c66b; --tip-bg:#2a2213; --tip-line:#4a3c1c;
+      --flag:#fca5a5; --flag-bg:#2a1414; --flag-line:#4a1e1e;
+      --shadow:0 6px 24px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+    line-height:1.55; font-size:17px;
+    padding:0 0 env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:0 16px}
+  header.topbar{
+    position:sticky;top:0;z-index:20;background:var(--bg);
+    padding-top:env(safe-area-inset-top);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{display:flex;align-items:center;gap:10px;padding:12px 16px;max-width:680px;margin:0 auto}
+  .brand{font-weight:700;font-size:15px;letter-spacing:.2px;flex:1;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .homebtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:6px 10px;font-size:13px;cursor:pointer}
+  .homebtn:active{transform:scale(.97)}
+  .progress-track{height:5px;background:var(--line);width:100%}
+  .progress-fill{height:5px;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:width .3s ease}
+
+  main{padding:20px 0 40px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:22px 20px;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .eyebrow{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);margin:0 0 6px}
+  h1.title{font-size:23px;line-height:1.25;margin:0 0 4px}
+  .lead-emoji{font-size:30px;line-height:1;margin-bottom:10px}
+  .body p{margin:0 0 12px}
+  .body ul{margin:0 0 12px;padding-left:20px}
+  .body li{margin:0 0 7px}
+  .body b,.body strong{color:var(--ink)}
+  .body code{background:var(--line);padding:2px 6px;border-radius:6px;font-size:14.5px}
+  .k{color:var(--accent);font-weight:700}
+
+  .callout{border-radius:13px;padding:13px 15px;margin:14px 0;font-size:15.5px;border:1px solid}
+  .callout .h{font-weight:700;display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:14px;text-transform:uppercase;letter-spacing:.04em}
+  .tip{background:var(--tip-bg);border-color:var(--tip-line);color:var(--tip)}
+  .tip .body-txt,.flag .body-txt{color:var(--ink)}
+  .flag{background:var(--flag-bg);border-color:var(--flag-line);color:var(--flag)}
+
+  .quiz{margin-top:18px;border-top:1px dashed var(--line);padding-top:16px}
+  .quiz .q{font-weight:650;margin:0 0 12px;display:flex;gap:8px}
+  .quiz .q .qn{color:var(--accent);font-weight:800}
+  .opt{
+    display:block;width:100%;text-align:left;background:var(--card);
+    border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;margin:0 0 9px;
+    font-size:16px;color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s;
+  }
+  .opt:active{transform:scale(.995)}
+  .opt.correct{border-color:var(--good);background:var(--good-bg)}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+  .opt.locked{cursor:default;opacity:.85}
+  .opt .mark{float:right;font-weight:800}
+  .explain{font-size:15px;background:var(--good-bg);border:1px solid var(--good);border-radius:11px;padding:11px 13px;margin-top:4px;display:none}
+  .explain.show{display:block}
+  .explain.miss{background:var(--bad-bg);border-color:var(--bad)}
+  .explain .lab{font-weight:700}
+
+  .nav{display:flex;gap:12px;margin-top:8px}
+  .btn{flex:1;border:none;border-radius:13px;padding:15px 16px;font-size:16px;font-weight:700;cursor:pointer;transition:transform .1s,opacity .15s}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* home */
+  .hero{text-align:center;padding:14px 4px 6px}
+  .hero .big{font-size:40px}
+  .hero h1{font-size:26px;margin:8px 0 4px}
+  .hero p{color:var(--muted);margin:0 0 4px}
+  .lesson-list{list-style:none;margin:6px 0 0;padding:0}
+  .lesson-item{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:13px;margin-bottom:9px;cursor:pointer;background:var(--card)}
+  .lesson-item:active{transform:scale(.996)}
+  .lesson-item .num{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--line);font-weight:700;font-size:14px;color:var(--muted)}
+  .lesson-item.done .num{background:var(--good);color:#fff}
+  .lesson-item .lt{flex:1}
+  .lesson-item .lt .tt{font-weight:650;font-size:15.5px}
+  .lesson-item .lt .st{font-size:13px;color:var(--muted)}
+  .lesson-item .chev{color:var(--muted)}
+  .meta{color:var(--muted);font-size:13.5px;text-align:center;margin-top:14px}
+  .reset{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:13px;cursor:pointer}
+
+  .scorebox{text-align:center}
+  .scorebox .pct{font-size:52px;font-weight:800;color:var(--accent);line-height:1}
+  .disclaimer{font-size:12.5px;color:var(--muted);text-align:center;margin:22px 0 8px;padding:0 6px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span> Reading a TAVR CT</div>
+    <button class="homebtn" id="homeBtn">☰ Menu</button>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+</header>
+
+<main><div class="wrap" id="app"></div></main>
+
+<script>
+/* ============================================================
+   CONTENT  — one concept per page. Sources: SCCT Expert Consensus
+   (Blanke 2019, JACC Imaging), plus verified 3mensio workflow research.
+   Educational only — always confirm against the raw CT and your
+   local 3mensio version + heart team.
+   ============================================================ */
+const LESSONS = [
+{
+  emoji:"🎯", eyebrow:"The big picture",
+  title:"What a TAVR CT is actually for",
+  body:`
+    <p>A pre-TAVR CT is <b>not</b> a "hunt for disease" scan. It's a <b>measurement &amp; planning</b> scan that answers <b>4 practical questions</b> for the heart team:</p>
+    <ul>
+      <li><span class="k">1. What size valve?</span> → measure the <b>aortic annulus</b>.</li>
+      <li><span class="k">2. Is it safe to deploy?</span> → <b>coronary heights</b>, <b>sinus size</b>, <b>calcium</b>.</li>
+      <li><span class="k">3. How do we get there?</span> → the <b>iliofemoral access</b> vessels.</li>
+      <li><span class="k">4. What C-arm angle?</span> → predict the <b>fluoroscopy view</b> for deployment.</li>
+    </ul>
+    <p>Everything else in the read just serves these four. We'll take them one at a time.</p>
+  `,
+  quizzes:[{
+    q:"What is the main purpose of a pre-TAVR CT?",
+    options:["Detect coronary artery disease","Measure and plan valve sizing, safety, and access","Assess left ventricular function","Rule out pulmonary embolism"],
+    answer:1,
+    explain:"It's a planning scan: sizing the valve, checking it's safe to deploy, and mapping the route in — not a coronary-disease work-up."
+  }]
+},
+{
+  emoji:"💍", eyebrow:"Concept · Lesson 1",
+  title:"The annulus is a virtual ring",
+  body:`
+    <p>The aortic annulus isn't a real anatomical band you can point to. It's a <b>virtual plane</b> you construct.</p>
+    <ul>
+      <li>Each of the 3 aortic cusps has a <b>lowest attachment point</b> — its <b>basal hinge point</b> (nadir).</li>
+      <li>Find all <b>3 nadirs</b>, then build the single plane that passes through all three.</li>
+      <li>The lumen outline where that plane cuts across = <b>the annulus</b> you size the valve to.</li>
+    </ul>
+    <p><b>Why it matters:</b> tilt the plane and <i>every</i> downstream number — valve size included — is wrong. Getting the plane right is step zero.</p>
+  `,
+  quizzes:[{
+    q:"The TAVR aortic annulus is defined as…",
+    options:["The sinotubular junction","A virtual plane through the 3 cusp nadirs (basal hinge points)","The narrowest part of the LVOT","A ring drawn at the coronary ostia"],
+    answer:1,
+    explain:"The annulus = the virtual plane joining the lowest attachment point (nadir) of all three cusps."
+  }]
+},
+{
+  emoji:"🖥️", eyebrow:"3mensio · Lesson 2",
+  title:"Nailing the plane in 3mensio",
+  body:`
+    <p>Open <b>Structural Heart → Aortic Valve</b> workflow and let the Workflow Assistant guide you top-to-bottom.</p>
+    <ul>
+      <li><b>Phase first.</b> Size on a <b>systolic phase (~30–40% R-R)</b> — the annulus is largest and roundest then.</li>
+      <li><b>Auto, then verify.</b> 3mensio segments the root and <b>auto-proposes the 3 nadirs</b>; your job is to <b>drag each nadir</b> to the true basal insertion.</li>
+      <li><b>Trace to the lumen.</b> Draw the contour on the blood–contrast border — and <b>cut inside protruding calcium</b>, never balloon out around it.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ In 3mensio</div><div class="body-txt"><b>The alignment test that matters:</b> slowly scroll/tilt the transverse plane until <b>all 3 cusps disappear at the same instant.</b> If one lingers, the plane is tilted — re-angle before trusting any number. (Under-recognised tilt = the #1 sizing error.)</div></div>
+  `,
+  quizzes:[{
+    q:"In 3mensio, how do you confirm the annular plane isn't tilted?",
+    options:["Switch to a diastolic phase","Scroll/tilt until all 3 cusps disappear at the same instant","Measure the sinotubular junction first","Check the coronary heights"],
+    answer:1,
+    explain:"The 'cusp-disappearance' test: a correctly level plane makes all three cusps vanish together as you scroll. If one lags, re-angle."
+  },{
+    q:"Which cardiac phase do you size the annulus in?",
+    options:["Diastole","Systole ~30–40% R-R","Any phase — it doesn't change","The phase with the most calcium"],
+    answer:1,
+    explain:"Systole: the annulus is largest and most circular, so diastolic sizing tends to under-size and raise paravalvular-leak risk."
+  }]
+},
+{
+  emoji:"⬛", eyebrow:"Sizing · Lesson 3",
+  title:"Area &amp; perimeter — not a single diameter",
+  body:`
+    <p>The annulus is <b>oval</b>, so one caliper "diameter" is unreliable and now considered obsolete. We size off <b>area</b> and <b>perimeter</b>.</p>
+    <ul>
+      <li><b>Area-derived diameter:</b> <code>D_area = 2·√(Area/π)</code></li>
+      <li><b>Perimeter-derived diameter:</b> <code>D_perim = Perimeter/π</code></li>
+      <li>3mensio also reports <b>min/max diameter</b> and <b>ellipticity</b> — lean on <b>D_area</b> when min/max look noisy.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ Pearl</div><div class="body-txt"><b>Balloon-expandable (Edwards SAPIEN)</b> is sized off <b>AREA</b>. <b>Self-expanding (Medtronic Evolut)</b> is sized off <b>PERIMETER</b>. Report both so either device can be planned.</div></div>
+  `,
+  quizzes:[{
+    q:"Medtronic Evolut (self-expanding) valve sizing is based mainly on…",
+    options:["Annulus area","Annulus perimeter","Maximum diameter","Coronary height"],
+    answer:1,
+    explain:"Self-expanding = perimeter. Balloon-expandable (SAPIEN) = area. Report both."
+  },{
+    q:"Why don't we size off a single annulus diameter?",
+    options:["Diameter can't be measured on CT","The annulus is oval, so one diameter is unreliable","Diameter needs a diastolic phase","It's only used for access vessels"],
+    answer:1,
+    explain:"Because the annulus is elliptical, a lone caliper diameter over- or under-reads depending on angle — area and perimeter are reproducible."
+  }]
+},
+{
+  emoji:"🫀", eyebrow:"Safety · Lesson 4",
+  title:"Coronary obstruction risk",
+  body:`
+    <p>When the valve pushes the calcified native leaflet aside, that leaflet can <b>curtain a coronary ostium</b> → coronary obstruction. Rare, but often fatal — so we screen for it.</p>
+    <ul>
+      <li><b>Coronary height</b> = annular plane → lower rim of each ostium (left &amp; right). <b>Flag &lt; 12 mm</b> (higher risk &lt; 10 mm).</li>
+      <li><b>Sinus of Valsalva</b> width: <b>flag &lt; 30 mm</b> — a small sinus can't "hold" the swept-back leaflet.</li>
+      <li><b>Sinotubular junction (STJ):</b> a <b>low + narrow</b> STJ can obstruct via <i>sinus sequestration</i> even when coronary height looks OK.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ In 3mensio</div><div class="body-txt">Measure <b>left height in the oblique coronal</b>, <b>right height in the oblique sagittal</b>. Then place a <b>virtual valve</b> and read the <b>VTC</b> (virtual-THV-to-coronary distance): <b>&lt;3 mm = high risk, 3–6 mm intermediate, &gt;6 mm low.</b></div></div>
+  `,
+  quizzes:[{
+    q:"A left coronary height of 9 mm is concerning because…",
+    options:["The valve won't expand","The displaced native leaflet may obstruct the coronary ostium","The annulus is too small to size","Access will be difficult"],
+    answer:1,
+    explain:"Low ostial height (<12 mm, worse <10 mm) means the swept-back leaflet can reach and cover the coronary — the core obstruction mechanism."
+  },{
+    q:"On 3mensio's virtual-valve simulation, which VTC distance flags HIGH obstruction risk?",
+    options:["Greater than 6 mm","3–6 mm","Less than 3 mm","VTC doesn't relate to obstruction"],
+    answer:2,
+    explain:"VTC <3 mm = high risk, 3–6 mm intermediate, >6 mm low. It models how close the deployed frame sits to the ostium."
+  }]
+},
+{
+  emoji:"🧊", eyebrow:"Safety · Lesson 5",
+  title:"Calcium — where it is matters",
+  body:`
+    <p>Calcium is read for <b>location</b>, not just amount.</p>
+    <ul>
+      <li><b>LVOT / sub-annular &amp; annular calcium</b> → risk of <b>annular rupture</b> (esp. balloon-expandable) and <b>paravalvular leak</b>.</li>
+      <li><b>Bulky leaflet-tip calcium</b> near a low ostium → adds to <b>coronary-obstruction</b> risk.</li>
+      <li>Grade and map it per cusp (RCC / LCC / NCC): nodular/bulky vs diffuse.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ In 3mensio</div><div class="body-txt">Use the <b>calcium overlay</b> with an adjustable HU threshold, and review on a <b>non-/low-contrast window</b> so calcium isn't masked by luminal contrast. Remember: <b>don't trace the annulus contour over calcium.</b></div></div>
+  `,
+  quizzes:[{
+    q:"Heavy LVOT / sub-annular calcium most increases the risk of…",
+    options:["Coronary obstruction only","Annular rupture and paravalvular leak","Access-vessel injury","Stroke only"],
+    answer:1,
+    explain:"Calcium in the LVOT/annulus resists expansion → rupture (especially balloon-expandable) and creates gaps → paravalvular leak."
+  }]
+},
+{
+  emoji:"📐", eyebrow:"Deployment · Lesson 6",
+  title:"Predicting the C-arm angle",
+  body:`
+    <p>The CT predicts the <b>fluoroscopy projection</b> so the implanter deploys coaxially.</p>
+    <ul>
+      <li><b>Coplanar / 3-cusp view:</b> the angle where all 3 cusps line up in one plane (nadir triangle collapses to a line). This is the default implant view.</li>
+      <li><b>Line of perpendicularity (LOP):</b> the whole <i>curve</i> of C-arm angles that stay coplanar — slide along it to a view your C-arm can reach.</li>
+      <li><b>Cusp-overlap view (self-expanding):</b> overlap RCC + LCC, isolate the NCC → elongates the LVOT, improves depth control, fewer pacemakers. Lands <b>RAO + caudal</b>.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ Rule of 22</div><div class="body-txt">Quick sanity check: the right–left <b>cusp-overlap view ≈ the coplanar view shifted ~22° toward RAO and ~22° toward CAUDAL.</b> Use it to cross-check 3mensio's number, not replace it.</div></div>
+  `,
+  quizzes:[{
+    q:"The predicted 'coplanar' C-arm angle from CT is used to…",
+    options:["Size the valve","Line up all 3 cusps in one plane for coaxial deployment","Measure the access vessels","Grade the calcium"],
+    answer:1,
+    explain:"Coplanar = the projection where the three cusps sit in one plane, giving an on-axis view for accurate valve positioning."
+  },{
+    q:"The cusp-overlap view (for self-expanding valves) typically lands in which quadrant?",
+    options:["LAO + cranial","RAO + caudal","LAO + caudal","RAO + cranial"],
+    answer:1,
+    explain:"Overlapping RCC+LCC and isolating the NCC lands in RAO + caudal — the 'Rule of 22' approximates it from the coplanar view."
+  }]
+},
+{
+  emoji:"🦵", eyebrow:"Access · Lesson 7",
+  title:"Can we get through the groin?",
+  body:`
+    <p>Build a <b>centerline</b> from aorta → common femoral artery on <b>both</b> sides, then read the vessel on cross-sections <b>perpendicular</b> to that centerline.</p>
+    <ul>
+      <li><b>Minimum lumen diameter (MLD)</b> is the gatekeeper — the <b>smallest</b>, not the mean. A round sheath must pass the narrowest point. Report the MLD <b>and its level</b> (CIA/EIA/CFA).</li>
+      <li><b>Calcium:</b> flag <b>&gt;270° (near-circumferential)</b> — a major complication predictor; calcified vessels don't stretch.</li>
+      <li><b>Tortuosity alone</b> usually straightens over a stiff wire; <b>tortuosity + calcium</b> is the dangerous combination.</li>
+    </ul>
+    <div class="callout tip"><div class="h">🖥️ Pearl · SFAR</div><div class="body-txt">Compare sheath outer diameter to MLD: <b>Sheath-to-Femoral-Artery Ratio ≥ 1.05</b> predicts more vascular complications. Always <b>drag-correct the centerline</b> before trusting a diameter — auto paths cut corners at tortuous/calcified segments.</div></div>
+  `,
+  quizzes:[{
+    q:"For iliofemoral access, the key vessel measurement is the…",
+    options:["Mean lumen diameter","Minimum lumen diameter","Maximum lumen diameter","Total vessel length"],
+    answer:1,
+    explain:"The MLD (smallest true short-axis diameter) is what the sheath must pass — report it with its anatomical level."
+  },{
+    q:"Which access finding is the biggest red flag for a vascular complication?",
+    options:["Mild tortuosity with no calcium","A large mean diameter","Greater than 270° circumferential calcium","A long common iliac artery"],
+    answer:2,
+    explain:">270° circumferential calcium prevents the vessel from stretching to the sheath. Tortuosity alone usually straightens out."
+  }]
+},
+{
+  emoji:"🧾", eyebrow:"Wrap-up · Lesson 8",
+  title:"Putting it together + the report",
+  body:`
+    <p><b>Run the workflow in order</b> (3mensio's assistant enforces it):</p>
+    <ul>
+      <li>root centerline → <b>annulus</b> (area/perimeter) → LVOT/calcium → <b>coronary heights + sinus/STJ</b> → <b>C-arm angles</b> → <b>iliofemoral access</b> → <b>report</b>.</li>
+      <li>Access is done <b>last but never skipped</b> — hostile access changes the whole plan.</li>
+      <li><b>Save your analysis state</b> so the plan reopens with your centerlines and points for the heart-team review.</li>
+    </ul>
+    <div class="callout flag"><div class="h">🚩 Red-flag recap</div><div class="body-txt">Coronary height <b>&lt;12 mm</b> · SOV <b>&lt;30 mm</b> · <b>VTC &lt;3 mm</b> · low+narrow STJ · bulky LVOT/leaflet-tip calcium · access <b>MLD</b> below sheath / <b>SFAR ≥1.05</b> / <b>&gt;270°</b> calcium → escalate to the heart team.</div></div>
+  `,
+  quizzes:[{
+    q:"Why is iliofemoral access assessed last but never skipped?",
+    options:["It's the least important step","Hostile access can change device or route choice entirely","It must be done before sizing","It only matters for self-expanding valves"],
+    answer:1,
+    explain:"You size and check safety first, but unsuitable access can force an alternative route (or device) — so it's essential, just last in the sequence."
+  }]
+}
+];
+
+/* ============================================================
+   APP LOGIC
+   ============================================================ */
+const KEY = "tavrct_progress_v1";
+const app = document.getElementById("app");
+const pfill = document.getElementById("pfill");
+const homeBtn = document.getElementById("homeBtn");
+
+let state = load();
+function load(){
+  try{ return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
+  catch(e){ return fresh(); }
+}
+function fresh(){ return { view:"home", idx:0, answers:{} }; } // answers: {"L-Q": chosenIndex}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+function lessonDone(i){
+  const L = LESSONS[i];
+  return L.quizzes.every((_,qi)=> state.answers[i+"-"+qi] !== undefined);
+}
+function totalAnswered(){
+  let a=0,t=0;
+  LESSONS.forEach((L,i)=> L.quizzes.forEach((q,qi)=>{ t++; if(state.answers[i+"-"+qi]!==undefined)a++; }));
+  return {a,t};
+}
+function totalCorrect(){
+  let c=0,t=0;
+  LESSONS.forEach((L,i)=> L.quizzes.forEach((q,qi)=>{ t++; const ch=state.answers[i+"-"+qi]; if(ch===q.answer)c++; }));
+  return {c,t};
+}
+function setProgressBar(){
+  const {a,t}=totalAnswered();
+  pfill.style.width = (t? (a/t*100):0) + "%";
+}
+
+function esc(s){return s;}
+
+function render(){
+  window.scrollTo(0,0);
+  if(state.view==="home") return renderHome();
+  if(state.view==="done") return renderDone();
+  return renderLesson(state.idx);
+}
+
+function renderHome(){
+  homeBtn.textContent = "☰ Menu";
+  const {a,t}=totalAnswered();
+  let items = LESSONS.map((L,i)=>`
+    <li class="lesson-item ${lessonDone(i)?'done':''}" data-go="${i}">
+      <div class="num">${lessonDone(i)?'✓':(i+1)}</div>
+      <div class="lt"><div class="tt">${L.title}</div><div class="st">${L.eyebrow}</div></div>
+      <div class="chev">›</div>
+    </li>`).join("");
+  app.innerHTML = `
+    <div class="card">
+      <div class="hero">
+        <div class="big">🫀</div>
+        <h1>Reading a TAVR CT</h1>
+        <p>Step by step, one idea per page — with practical <b>3mensio</b> tips and quick quizzes.</p>
+      </div>
+      <div class="nav" style="margin-top:16px">
+        <button class="btn primary" id="startBtn">${a>0? 'Continue' : 'Start'} →</button>
+      </div>
+      <div class="meta">${a} / ${t} quiz questions answered${a>0?` · <button class="reset" id="resetBtn">reset progress</button>`:''}</div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Lessons</div>
+      <ul class="lesson-list">${items}</ul>
+    </div>
+    <div class="disclaimer">Educational tool for training. Always confirm every measurement against the raw CT, your local 3mensio version, and the heart team. Not medical advice.</div>
+  `;
+  document.getElementById("startBtn").onclick=()=>{
+    let first = LESSONS.findIndex((_,i)=>!lessonDone(i));
+    goLesson(first<0?0:first);
+  };
+  const rb=document.getElementById("resetBtn");
+  if(rb) rb.onclick=()=>{ if(confirm("Clear all saved progress on this device?")){ state=fresh(); save(); render(); } };
+  app.querySelectorAll("[data-go]").forEach(el=> el.onclick=()=>goLesson(+el.dataset.go));
+  setProgressBar();
+}
+
+function goLesson(i){ state.view="lesson"; state.idx=i; save(); render(); }
+
+function renderLesson(i){
+  homeBtn.textContent="☰ Menu";
+  const L=LESSONS[i];
+  const quizHTML = L.quizzes.map((q,qi)=>{
+    const key=i+"-"+qi;
+    const chosen=state.answers[key];
+    const answered=chosen!==undefined;
+    const opts=q.options.map((o,oi)=>{
+      let cls="opt";
+      if(answered){
+        cls+=" locked";
+        if(oi===q.answer) cls+=" correct";
+        else if(oi===chosen) cls+=" wrong";
+      }
+      let mark = answered ? (oi===q.answer?'<span class="mark">✓</span>':(oi===chosen?'<span class="mark">✗</span>':'')) : '';
+      return `<button class="${cls}" data-q="${qi}" data-o="${oi}" ${answered?'disabled':''}>${o}${mark}</button>`;
+    }).join("");
+    const miss = answered && chosen!==q.answer;
+    const exp = `<div class="explain ${answered?'show':''} ${miss?'miss':''}" id="exp-${qi}"><span class="lab">${miss?'Not quite. ':'Correct. '}</span>${q.explain}</div>`;
+    return `<div class="quiz">
+      <div class="q"><span class="qn">Q${L.quizzes.length>1?(qi+1):''}</span><span>${q.q}</span></div>
+      ${opts}
+      ${exp}
+    </div>`;
+  }).join("");
+
+  const allAnswered = L.quizzes.every((_,qi)=> state.answers[i+"-"+qi]!==undefined);
+  const isLast = i===LESSONS.length-1;
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="lead-emoji">${L.emoji}</div>
+      <div class="eyebrow">${L.eyebrow} · ${i+1} of ${LESSONS.length}</div>
+      <h1 class="title">${L.title}</h1>
+      <div class="body">${L.body}</div>
+      ${quizHTML}
+    </div>
+    <div class="nav">
+      <button class="btn ghost" id="prevBtn">${i===0?'☰ Menu':'← Back'}</button>
+      <button class="btn primary" id="nextBtn" ${allAnswered?'':'disabled'}>
+        ${isLast? 'Finish ✓' : 'Next →'}
+      </button>
+    </div>
+    ${allAnswered?'':'<div class="meta">Answer above to unlock Next →</div>'}
+  `;
+
+  app.querySelectorAll(".opt[data-q]").forEach(btn=>{
+    btn.onclick=()=>{
+      const qi=+btn.dataset.q, oi=+btn.dataset.o;
+      const key=i+"-"+qi;
+      if(state.answers[key]!==undefined) return;
+      state.answers[key]=oi;
+      save();
+      renderLesson(i); // re-render to lock + reveal explanation
+    };
+  });
+  document.getElementById("prevBtn").onclick=()=>{
+    if(i===0){ state.view="home"; save(); render(); }
+    else goLesson(i-1);
+  };
+  const nb=document.getElementById("nextBtn");
+  nb.onclick=()=>{
+    if(nb.disabled) return;
+    if(isLast){ state.view="done"; save(); render(); }
+    else goLesson(i+1);
+  };
+  setProgressBar();
+}
+
+function renderDone(){
+  homeBtn.textContent="☰ Menu";
+  const {c,t}=totalCorrect();
+  const pct = t? Math.round(c/t*100):0;
+  app.innerHTML=`
+    <div class="card scorebox">
+      <div class="lead-emoji" style="text-align:center;font-size:40px">🎉</div>
+      <div class="eyebrow" style="text-align:center">Course complete</div>
+      <h1 class="title" style="text-align:center">You finished all ${LESSONS.length} lessons</h1>
+      <div class="pct">${pct}%</div>
+      <p class="meta" style="margin-top:2px">${c} / ${t} quiz questions correct</p>
+      <div class="callout flag" style="text-align:left"><div class="h">🚩 Carry these numbers to the workstation</div><div class="body-txt">Systole 30–40% for annulus · size SAPIEN off <b>area</b>, Evolut off <b>perimeter</b> · coronary height <b>&lt;12 mm</b> · SOV <b>&lt;30 mm</b> · VTC <b>&lt;3 mm</b> · access <b>MLD</b> is min not mean · <b>&gt;270°</b> calcium &amp; SFAR <b>≥1.05</b>.</div></div>
+      <div class="nav">
+        <button class="btn ghost" id="reviewBtn">Review lessons</button>
+        <button class="btn primary" id="restartBtn">Restart quiz</button>
+      </div>
+    </div>
+    <div class="disclaimer">Educational tool for training. Always confirm against the raw CT, your local 3mensio version, and the heart team.</div>
+  `;
+  document.getElementById("reviewBtn").onclick=()=>{ state.view="home"; save(); render(); };
+  document.getElementById("restartBtn").onclick=()=>{ state.answers={}; state.view="home"; state.idx=0; save(); render(); };
+  pfill.style.width="100%";
+}
+
+homeBtn.onclick=()=>{ state.view="home"; save(); render(); };
+render();
+</script>
+</body>
+</html>
